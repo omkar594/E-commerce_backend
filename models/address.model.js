@@ -7,7 +7,7 @@ const AddressSchema = new mongoose.Schema({
   city: { type: String, require: true },
   state: { type: String, require: true },
   zipCode: { type: Number, require: true },
-  user: { type: mongoose.Schema.Types.ObjectId, ref: "users" },
+  user: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
   mobile: { type: String, require: true },
 });
 

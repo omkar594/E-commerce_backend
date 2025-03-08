@@ -8,7 +8,7 @@ async function createProduct(reqData) {
       name: reqData.topLevelCategory,
       level: 1,
     });
-    await topLevel.save()
+    await topLevel.save();
   }
   let secondLevel = await Category.findOne({
     name: reqData.secondLevelCategory,
@@ -21,7 +21,7 @@ async function createProduct(reqData) {
       parentCategory: topLevel._id,
       level: 2,
     });
-    await secondLevel.save()
+    await secondLevel.save();
   }
 
   let thirdLevel = await Category.findOne({
@@ -34,7 +34,7 @@ async function createProduct(reqData) {
       parentCategory: secondLevel._id,
       level: 3,
     });
-    await thirdLevel.save()
+    await thirdLevel.save();
   }
 
   const product = new Product({
@@ -42,7 +42,7 @@ async function createProduct(reqData) {
     color: reqData.color,
     description: reqData.description,
     discountedPrice: reqData.discountedPrice,
-    discountedPersent: reqData.discountedPersent,
+    discountedPercent: reqData.discountedPercent,
     imageUrl: reqData.imageUrl,
     brand: reqData.brand,
     price: reqData.price,
@@ -56,7 +56,7 @@ async function createProduct(reqData) {
 async function deleteProduct(productId) {
   const product = await findProductById(productId);
 
-  await Product.findByIdAndDelete(productId);
+  await product.findByIdAndDelete(productId);
   return "Product deleted SuccessFully";
 }
 
@@ -68,7 +68,7 @@ async function findProductById(id) {
   const product = await Product.findById(id).populate("category").exec();
 
   if (!product) {
-    throw new Error("PRoduct not found with id " + id);
+    throw new Error("Product not found with id " + id);
   }
   return product;
 }
@@ -77,77 +77,108 @@ async function getAllProducts(reqQuery) {
   let {
     category,
     color,
-    sizes,
+    size,
     minPrice,
     maxPrice,
     minDiscount,
     sort,
     stock,
-    pageNumber,
-    pageSize,
+    pageNumber=1, // Default to 1 if pageNumber is not provided
+    pageSize = 10, // Default to 10 if pageSize is not provided
   } = reqQuery;
+  console.log(reqQuery.pageNumber);
+  // Ensure pageNumber and pageSize are valid non-negative integers
+  pageNumber = Math.max(1, parseInt(pageNumber, 10)|| 1); // Ensure pageNumber is at least 1
+  pageSize = Math.max(1, parseInt(pageSize, 10)|| 10); // Ensure pageSize is at least 1
 
-  pageSize = pageSize || 10;
-
+  // Initialize query to get all products
   let query = Product.find().populate("category");
 
-  if (category) {
-    const existCategory = await Category.findOne({ name: category });
-    if (existCategory) {
+  
+
+  try {
+    // Handle category filter
+    if (category) {
+
+      const existCategory = await Category.findOne({ name: category });
+      if (!existCategory) {
+        console.log("Category not found");
+        return { content: [], currentPage: 1, totalPages: 0 }; // Return empty if category not found
+      }
       query = query.where("category").equals(existCategory._id);
-    } else {
-      return { content: [], currentPage: 1, totalPages: 0 };
     }
-  }
 
-  if (color) {
-    const colorSet = new Set(
-      color.split(",").map((color) => color.trim().toLowerCase())
-    );
+    if(color){
+      const colorSet = new Set(color.split(",").map(color => color.trim().toLowerCase()));
 
-    const colorRegex =
-      colorSet.size > 0 ? new RegExp([...colorSet].join("|"), "i") : null;
-
-    query = query.where("color").regex(colorRegex);
-  }
-
-  if (sizes) {
-    const sizesSet = new Set(sizes);
-
-    query = query.where("sizes.name").in([...sizesSet]);
-  }
-
-  if (minPrice && maxPrice) {
-    query = query.where("discountedPrice").gte(minPrice).lte(maxPrice);
-  }
-  if (minDiscount) {
-    query = query.where("discountPersent").gt(minDiscount);
-  }
-
-  if (stock) {
-    if (stock == "in_stock") {
-      query = query.where("quantity").gt(0);
-    } else if (stock == "out_of_stock") {
-      query = query.where("quantity").gt(1);
+      const colorRegex=colorSet.size>0?new RegExp([...colorSet].join("|"),"i"):null
+      
+        query=query.where("color").regex(colorRegex)
     }
+
+    if(size){
+      const sizeSet = new Set(size)
+      console.log("try",sizeSet);
+      query=query.where("size.name").in([...sizeSet]);
+      
+    }
+
+    if(minPrice && maxPrice){
+      query = query.where('discountedPrice').gte(minPrice).lte(maxPrice)
+    }
+
+    if(minDiscount){
+      try{
+        query = query.where('discountedPercent').gte(minDiscount);
+      }catch(e){
+        console.log("This the Error",e.message);
+      }
+    }
+
+    if(stock){
+      if(stock=='in_stock'){
+        try{
+          query=query.where("quantity").gt(0);
+        }catch(e){
+          console.log("This is the error",e.message)
+        }
+      }
+      else if(stock=='out_of_stock'){
+        query=query.where("quantity").gte(0);
+      }
+    }
+
+    if(sort){
+      const sortDirection=sort==="price_high"?-1:1;
+      query = query.sort({discountedPrice:sortDirection})
+    }
+
+    // Get total count of documents matching the query (without pagination)
+    const totalProducts = await Product.countDocuments(query);
+    console.log("Total products matching filter: ", totalProducts);
+
+    // Pagination logic
+    const skip = (pageNumber-1) * pageSize; // Ensure skip is non-negative
+    console.log(pageNumber,pageSize)
+    query = query.skip(skip).limit(pageSize); // Apply pagination skip and limit
+
+
+    // Fetch the products from the database
+    const products = await query.exec();
+
+    // Return paginated results
+    const totalPages = Math.ceil(totalProducts / pageSize);
+    // console.log("Fetched products: ", products);
+
+    return {
+      content: products,
+      currentPage: pageNumber,
+      totalPages: totalPages,
+    };
+  } catch (error) {
+    console.log("Error in getAllProducts: ", error.message);
+    return { content: [], currentPage: 1, totalPages: 0 }; // Return empty if any error occurs
   }
-
-  if (sort) {
-    const sortDirection = sort === "price_hight" ? -1 : 1;
-    query = query.sort({ discountedPrice: sortDirection });
-  }
-
-  const totalProducts = await Product.countDocuments(query);
-
-  const skip = (pageNumber - 1) * pageSize;
-
-  query = query.skip(skip).limit(pageSize);
-
-  const products = await query.exec();
-
-  const totalPages = Math.ceil(totalProducts / pageSize);
-
-  return { content: products, currentPage: pageNumber, totalPages: totalPages };
 }
 
 async function createMultipleProduct(products) {

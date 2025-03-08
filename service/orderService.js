@@ -3,18 +3,21 @@ const Address = require("../models/address.model.js");
 const Order = require("../models/order.model.js");
 const OrderItem = require("../models/orderItems.js");
 
-async function createOrder(user,shippAddress) {
+async function createOrder(user,shippingAddress) {
   let address;
+  const users = await user;
+  console.log(user)
   
-  if (shippAddress._id) {
-    let existAddress = await Address.findById(shippAddress._id);
+  
+  if (shippingAddress._id) {
+    let existAddress = await Address.findById(shippingAddress._id);
     address = existAddress;
   } else {
-    address = new Address(shippAddress);
-    address.user = user;
+    address = new Address(shippingAddress);
+    console.log("This is the address",address)
+    
     await address.save();
-
-    console.log("user.addresses",user.address)
+    address.user = user;
 
     user.address.push(address);
     await user.save();
@@ -37,13 +40,13 @@ async function createOrder(user,shippAddress) {
   }
 
   const createdOrder = new Order({
-    user,
+    users,
     orderItems,
     totalPrice: cart.totalPrice,
     totalDiscountPrice: cart.totalDiscountPrice,
     discount: cart.discount,
     totalItem: cart.totalItem,
-    shippAddress: address,
+    shippingAddress: address,
   });
 
   const savedOrder = await createdOrder.save();
@@ -87,10 +90,11 @@ async function cancelledOrder(orderId) {
 }
 
 async function findOrderById(orderId) {
-  const order = await Order.findById(orderId)
-    .populate("user")
+  const order = await Order.findById(orderId).populate("users")
     .populate({ path: "orderItems", populate: { path: "product" } })
     .populate("shippingAddress");
+
+    // console.log("OrderService",order,"____________")
 
   return order;
 }

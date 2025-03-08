@@ -68,8 +68,10 @@ async function addCartItem(userId,req){
             cart.cartItems.push(createdCartItem);
             await cart.save();
 
-            return "Item Added to cart";
+            return createdCartItem;
         }
+        return isPresent; 
+        
     }catch(e){
         throw new Error(e.message);
     }

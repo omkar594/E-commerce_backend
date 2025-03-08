@@ -3,7 +3,7 @@ const orderService = require("../service/orderService.js");
 const createOrder=async(req,res)=>{
     const user =await req.user;
     try{
-        
+        // console.log("BODY WASH",req.body)
         let createdOrder = await orderService.createOrder(user,req.body);
         
         return res.status(201).send(createdOrder);
