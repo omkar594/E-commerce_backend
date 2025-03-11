@@ -14,7 +14,7 @@ async function createProduct(reqData) {
     name: reqData.secondLevelCategory,
     parentCategory: topLevel._id,
   });
-
+  
   if (!secondLevel) {
     secondLevel = new Category({
       name: reqData.secondLevelCategory,
@@ -23,11 +23,12 @@ async function createProduct(reqData) {
     });
     await secondLevel.save();
   }
-
+  
   let thirdLevel = await Category.findOne({
     name: reqData.thirdLevelCategory,
     parentCategory: secondLevel._id,
   });
+  console.log("Ok is in",thirdLevel);
   if (!thirdLevel) {
     thirdLevel = new Category({
       name: reqData.thirdLevelCategory,
@@ -50,13 +51,19 @@ async function createProduct(reqData) {
     quantity: reqData.quantity,
     category: thirdLevel._id,
   });
-  return await product.save();
+  console.log("Ok")
+  try{
+    return await product.save();
+  }catch(e){
+    console.log("Error with this",e);
+  }
 }
 
 async function deleteProduct(productId) {
   const product = await findProductById(productId);
-
-  await product.findByIdAndDelete(productId);
+  
+  await Product.findByIdAndDelete(productId);
+  console.log("#Check2",product)
   return "Product deleted SuccessFully";
 }
 
@@ -64,7 +71,7 @@ async function updateProduct(productId, reqData) {
   return await Product.findByIdAndUpdate(productId, reqData);
 }
 
-async function findProductById(id) {
+async function findProductById(id,price) {
   const product = await Product.findById(id).populate("category").exec();
 
   if (!product) {
@@ -90,46 +97,52 @@ async function getAllProducts(reqQuery) {
   // Ensure pageNumber and pageSize are valid non-negative integers
   pageNumber = Math.max(1, parseInt(pageNumber, 10)|| 1); // Ensure pageNumber is at least 1
   pageSize = Math.max(1, parseInt(pageSize, 10)|| 10); // Ensure pageSize is at least 1
-
+  
   // Initialize query to get all products
   let query = Product.find().populate("category");
-
   
-
+  
+  
   try {
     // Handle category filter
     if (category) {
-
       const existCategory = await Category.findOne({ name: category });
+      console.log("in this section",existCategory,category);
       if (!existCategory) {
         console.log("Category not found");
         return { content: [], currentPage: 1, totalPages: 0 }; // Return empty if category not found
       }
       query = query.where("category").equals(existCategory._id);
     }
-
+    
     if(color){
+      console.log("color",color);
       const colorSet = new Set(color.split(",").map(color => color.trim().toLowerCase()));
-
+      
       const colorRegex=colorSet.size>0?new RegExp([...colorSet].join("|"),"i"):null
       
-        query=query.where("color").regex(colorRegex)
+      query=query.where("color").regex(colorRegex)
+      console.log("quert",query);
     }
-
+    
     if(size){
       const sizeSet = new Set(size)
+      console.log("reach",color)
       console.log("try",sizeSet);
       query=query.where("size.name").in([...sizeSet]);
       
     }
 
     if(minPrice && maxPrice){
-      query = query.where('discountedPrice').gte(minPrice).lte(maxPrice)
+      console.log("check",minPrice,maxPrice)
+      query =  query.where('discountedPrice').gte(minPrice).lte(maxPrice)
+      // console.log("##$$#$",query);
     }
 
     if(minDiscount){
       try{
         query = query.where('discountedPercent').gte(minDiscount);
+        console.log("I get the descount",minDiscount)
       }catch(e){
         console.log("This the Error",e.message);
       }

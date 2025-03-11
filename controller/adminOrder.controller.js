@@ -48,9 +48,11 @@ const cancelledOrders = async(req,res)=>{
 }
 
 const deleteOrders = async(req,res)=>{
+    console.log("ok")
     const orderId = req.params.orderId
     try{
         const orders = await orderService.deleteOrder(orderId);
+        console.log("In delete",orderId)
         return res.status(200).send(orders);
     }catch(e){
         return res.status(500).send({error:e.message})

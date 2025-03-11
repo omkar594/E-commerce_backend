@@ -11,6 +11,11 @@ app.get("/", (req, res) => {
   res.status(200).send({ message: "Welcom to the server ", status: true });
 });
 
+
+const priceRouter = require("./routes/pricesRoutes.js"); 
+app.use("/api/prices", priceRouter);
+
+
 const authRouters = require("./routes/auth.route.js");
 app.use("/auth", authRouters);
 
@@ -19,6 +24,7 @@ app.use("/api/users", userRouters);
 
 const productRouters = require("./routes/product.routes.js");
 app.use("/api/products", productRouters);
+
 
 const adminProductRouters = require("./routes/adminProduct.routes.js");
 app.use("/api/admin/products", adminProductRouters);

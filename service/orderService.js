@@ -117,8 +117,11 @@ async function getAllOrders() {
     .lean();
 }
 async function deleteOrder(orderId) {
+  console.log("ok");
+  // console.log("Route hit, orderId:",orderId);
+  console.log("This is the orderId",orderId)
   const order = await findOrderById(orderId);
-  await Order.findByIdAndDelete(orderId._id);
+  await Order.findByIdAndDelete(orderId);
 }
 
 module.exports = {
